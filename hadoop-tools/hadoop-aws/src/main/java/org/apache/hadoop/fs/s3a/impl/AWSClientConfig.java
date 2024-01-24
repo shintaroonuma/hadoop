@@ -32,6 +32,8 @@ import software.amazon.awssdk.core.retry.RetryMode;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
+import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
+import software.amazon.awssdk.http.crt.AwsCrtAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 
 import org.apache.hadoop.classification.VisibleForTesting;
@@ -181,6 +183,22 @@ public final class AWSClientConfig {
 
     // TODO: Don't think you can set a socket factory for the netty client.
     //  NetworkBinding.bindSSLChannelMode(conf, awsConf);
+
+    return httpClientBuilder;
+  }
+
+  public static SdkAsyncHttpClient.Builder createAsyncCRTHTTPClientBuilder(Configuration conf) {
+    AwsCrtAsyncHttpClient.Builder httpClientBuilder = AwsCrtAsyncHttpClient.builder();
+
+    httpClientBuilder.maxConcurrency(S3AUtils.intOption(conf, MAXIMUM_CONNECTIONS,
+            DEFAULT_MAXIMUM_CONNECTIONS, 1));
+
+
+    int connectionEstablishTimeout =
+            S3AUtils.intOption(conf, ESTABLISH_TIMEOUT, (int)DEFAULT_ESTABLISH_TIMEOUT_DURATION.toMillis(), 0);
+    int socketTimeout = S3AUtils.intOption(conf, SOCKET_TIMEOUT, (int)DEFAULT_SOCKET_TIMEOUT_DURATION.toMillis(), 0);
+
+    httpClientBuilder.connectionTimeout(Duration.ofMillis(connectionEstablishTimeout));
 
     return httpClientBuilder;
   }

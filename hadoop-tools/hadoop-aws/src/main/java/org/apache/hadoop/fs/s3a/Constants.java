@@ -320,6 +320,12 @@ public final class Constants {
   public static final int DEFAULT_ESTABLISH_TIMEOUT =
       (int)DEFAULT_ESTABLISH_TIMEOUT_DURATION.toMillis();
 
+  // milliseconds until we give up trying to acquire a connection
+  public static final String ACQUIRE_TIMEOUT =
+          "fs.s3a.connection.acquire.timeout";
+
+  public static final int DEFAULT_ACQUIRE_TIMEOUT = 50000;
+
   /**
    * Milliseconds until we give up on a connection to s3: {@value}.
    */
@@ -1405,6 +1411,9 @@ public final class Constants {
    * Default maximum read size in bytes during vectored reads : {@value}.
    */
   public static final int DEFAULT_AWS_S3_VECTOR_READS_MAX_MERGED_READ_SIZE = 1253376; //1M
+
+  public static final String AWS_S3_CLIENT =
+          "fs.s3a.aws.s3.client";
 
   /**
    * Maximum number of range reads a single input stream can have
