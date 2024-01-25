@@ -268,7 +268,7 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
       closeStream("reopen(" + reason + ")", forceAbort, false);
     }
 
-    System.out.println("REOPENING FILE");
+    //System.out.println("REOPENING FILE");
 
     contentRangeFinish = calculateRequestLimit(inputPolicy, targetPos,
         length, contentLength, readahead);
@@ -461,7 +461,7 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
   public synchronized int read() throws IOException {
     checkNotClosed();
 
-    System.out.println("READING FILE SINGLE");
+    //System.out.println("READING FILE SINGLE");
 
     if (this.contentLength == 0 || (nextReadPos >= contentLength)) {
       return -1;
@@ -554,7 +554,7 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
       throws IOException {
     checkNotClosed();
 
-    System.out.println("READING FILE BYTES");
+    //System.out.println("READING FILE BYTES");
 
     validatePositionedReadArgs(nextReadPos, buf, off, len);
     if (len == 0) {
@@ -633,10 +633,10 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
    */
   @Override
   public synchronized void close() throws IOException {
-    System.out.println("CALLING CLOSE");
+    //System.out.println("CALLING CLOSE");
     if (!closed) {
       closed = true;
-      System.out.println("CLOSING");
+      //System.out.println("CLOSING");
       try {
         stopVectoredIOOperations.set(true);
         // close or abort the stream; blocking
@@ -693,7 +693,7 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
       return CompletableFuture.completedFuture(false);
     }
 
-    System.out.println("CLOSING STREAM");
+    //System.out.println("CLOSING STREAM");
 
     // if the amount of data remaining in the current request is greater
     // than the readahead value: abort.

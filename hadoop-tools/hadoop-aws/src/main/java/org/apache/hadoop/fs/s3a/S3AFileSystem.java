@@ -538,7 +538,6 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
     bucket = name.getHost();
 
     LOG.info("Initialising client");
-    System.out.println("Initialising client");
 
     AuditSpan span = null;
     try {
