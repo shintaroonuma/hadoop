@@ -84,6 +84,7 @@ import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Error;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentRequest;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentResponseHandler;
@@ -942,8 +943,14 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
         STORE_EXISTS_PROBE, bucket, null, () ->
             invoker.retry("doesBucketExist", bucket, true, () -> {
               try {
-                s3AsyncClient.headBucket(HeadBucketRequest.builder().bucket(bucket).build());
+                s3AsyncClient.headBucket(HeadBucketRequest.builder().bucket(bucket).build()).join();
                 return true;
+              } catch (CompletionException p) {
+                int statusCode = ((S3Exception) p.getCause()).statusCode();
+                if (statusCode == SC_404_NOT_FOUND ||
+                        (statusCode == SC_403_FORBIDDEN && accessPoint != null)) {
+                  return false;
+                }
               } catch (AwsServiceException ex) {
                 int statusCode = ex.statusCode();
                 if (statusCode == SC_404_NOT_FOUND ||

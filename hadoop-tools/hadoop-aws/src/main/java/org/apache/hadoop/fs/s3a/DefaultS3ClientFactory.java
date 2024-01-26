@@ -184,18 +184,23 @@ public class DefaultS3ClientFactory extends Configured
 
     S3CrtAsyncClientBuilder s3CrtAsyncClientBuilder = S3AsyncClient.crtBuilder();
 
-    Region region = Region.of(parameters.getRegion());
-    LOG.debug("Using region {}", region);
+    String configuredRegion = parameters.getRegion();
+    Region region;
+    if(configuredRegion != null) {
+      region = Region.of(configuredRegion);
+      LOG.debug("Using region {}", region);
+    }
 
     URI endpoint = getS3Endpoint(parameters.getEndpoint(), conf);
-
     if (endpoint != null) {
       s3CrtAsyncClientBuilder.endpointOverride(endpoint);
       LOG.debug("Using endpoint {}", endpoint);
     }
 
-    return S3AsyncClient.crtBuilder().region(region).forcePathStyle(parameters.isPathStyleAccess())
-            .credentialsProvider(parameters.getCredentialSet());
+    return s3CrtAsyncClientBuilder
+            .forcePathStyle(parameters.isPathStyleAccess())
+            .credentialsProvider(parameters.getCredentialSet())
+            .crossRegionAccessEnabled(true);
 
   }
 
