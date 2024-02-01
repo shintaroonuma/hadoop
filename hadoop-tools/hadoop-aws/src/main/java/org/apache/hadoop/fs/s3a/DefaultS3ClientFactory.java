@@ -148,13 +148,16 @@ public class DefaultS3ClientFactory extends Configured
 
     if (awsClient != null && awsClient.equals("CRT_HTTP")) {
       LOG.info("Using CRT HTTP client");
+      System.out.println("Using CRT HTTP client");
       httpClientBuilder = AWSClientConfig
               .createAsyncCRTHTTPClientBuilder(conf);
     } else if (awsClient != null && awsClient.equals("CRT_S3")) {
       LOG.info("Using S3 CRT client");
+      System.out.println("Using S3 CRT client");
       return createCRTAsyncClient(parameters, conf).build();
     } else {
       LOG.info("Using JAVA HTTP client");
+      System.out.println("Using JAVA HTTP client");
       httpClientBuilder = AWSClientConfig
               .createAsyncHttpClientBuilder(conf)
               .proxyConfiguration(AWSClientConfig.createAsyncProxyConfiguration(conf, bucket));
@@ -287,7 +290,7 @@ public class DefaultS3ClientFactory extends Configured
     final RetryPolicy.Builder retryPolicyBuilder = AWSClientConfig.createRetryPolicyBuilder(conf);
     clientOverrideConfigBuilder.retryPolicy(retryPolicyBuilder.build());
 
-    //System.out.println("Creating metrics publisher");
+    System.out.println("Creating metrics publisher");
 
     SdkAsyncHttpClient asyncHttpClient = NettyNioAsyncHttpClient.create();
 
