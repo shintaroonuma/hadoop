@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import software.amazon.awssdk.awscore.util.AwsHostNameUtils;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkAdvancedAsyncClientOption;
 import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
 import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.core.retry.RetryPolicy;
@@ -146,6 +147,9 @@ public class DefaultS3ClientFactory extends Configured
 
     SdkAsyncHttpClient.Builder httpClientBuilder;
 
+    LOG.info("Overriding client executor with unbounded thread pool");
+    System.out.println("Overriding client executor with unbounded thread pool");
+
     if (awsClient != null && awsClient.equals("CRT_HTTP")) {
       LOG.info("Using CRT HTTP client");
       System.out.println("Using CRT HTTP client");
@@ -172,6 +176,10 @@ public class DefaultS3ClientFactory extends Configured
         .httpClientBuilder(httpClientBuilder)
         .multipartConfiguration(multipartConfiguration)
         .multipartEnabled(parameters.isMultipartCopy())
+            .asyncConfiguration(b -> b.advancedOption(SdkAdvancedAsyncClientOption
+                            .FUTURE_COMPLETION_EXECUTOR,
+                    parameters.getTransferManagerExecutor()
+            ))
         .build();
   }
 
@@ -203,6 +211,7 @@ public class DefaultS3ClientFactory extends Configured
     return s3CrtAsyncClientBuilder
             .forcePathStyle(parameters.isPathStyleAccess())
             .credentialsProvider(parameters.getCredentialSet())
+            .futureCompletionExecutor(parameters.getTransferManagerExecutor())
             .crossRegionAccessEnabled(true);
 
   }
