@@ -383,6 +383,15 @@ public final class Constants {
   public static final String CONNECTION_KEEPALIVE =
       "fs.s3a.connection.keepalive";
 
+  public static final String CONNECTION_HEALTH_CONFIGURED =
+          "fs.s3a.connection.health.configured";
+
+  public static final String CONNECTION_MINIMUM_THROUGHPUT =
+          "fs.s3a.connection.minimum.throughput";
+
+  public static final String CONNECTION_MINIMUM_THROUGHPUT_TIMEOUT =
+          "fs.s3a.connection.minimum.throughput.timeout";
+
   /**
    * Default value of {@link #CONNECTION_KEEPALIVE}: {@value}.
    */
