@@ -1414,6 +1414,12 @@ public final class Constants {
 
   public static final String AWS_S3_CLIENT =
           "fs.s3a.aws.s3.client";
+  public static final String AWS_S3_CRT_CLIENT_THROUGHPUT =
+          "fs.s3a.aws.s3.crt.throughput";
+  public static final String AWS_S3_CRT_CLIENT_MEMORY =
+          "fs.s3a.aws.s3.crt.memory";
+  public static final String AWS_S3_CRT_CLIENT_CONCURRENCY =
+          "fs.s3a.aws.s3.crt.concurrency";
 
   /**
    * Maximum number of range reads a single input stream can have

@@ -60,6 +60,9 @@ import org.apache.hadoop.fs.store.LogExactlyOnce;
 
 import static org.apache.hadoop.fs.s3a.Constants.AWS_REGION;
 import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CLIENT;
+import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_CONCURRENCY;
+import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_MEMORY;
+import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_THROUGHPUT;
 import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_DEFAULT_REGION;
 import static org.apache.hadoop.fs.s3a.Constants.CENTRAL_ENDPOINT;
 import static org.apache.hadoop.fs.s3a.Constants.FIPS_ENDPOINT;
@@ -207,6 +210,22 @@ public class DefaultS3ClientFactory extends Configured
       s3CrtAsyncClientBuilder.endpointOverride(endpoint);
       LOG.debug("Using endpoint {}", endpoint);
     }
+
+    String memory = conf.get(AWS_S3_CRT_CLIENT_MEMORY, null);
+    if (memory != null) {
+      s3CrtAsyncClientBuilder.maxNativeMemoryLimitInBytes(Long.parseLong(memory));
+    }
+
+    String throughput = conf.get(AWS_S3_CRT_CLIENT_THROUGHPUT, null);
+    if (throughput != null) {
+      s3CrtAsyncClientBuilder.targetThroughputInGbps(Double.parseDouble(throughput));
+    }
+
+    String concurrency = conf.get(AWS_S3_CRT_CLIENT_CONCURRENCY, null);
+    if (concurrency != null) {
+      s3CrtAsyncClientBuilder.maxConcurrency(Integer.parseInt(concurrency));
+    }
+
 
     return s3CrtAsyncClientBuilder
             .forcePathStyle(parameters.isPathStyleAccess())
