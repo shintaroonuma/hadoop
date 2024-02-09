@@ -61,7 +61,10 @@ import org.apache.hadoop.fs.store.LogExactlyOnce;
 import static org.apache.hadoop.fs.s3a.Constants.AWS_REGION;
 import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CLIENT;
 import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_CONCURRENCY;
+import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_INITIAL_READ_BUFFER_SIZE;
 import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_MEMORY;
+import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_MIN_PART_SIZE;
+import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_THRESHOLD;
 import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_CRT_CLIENT_THROUGHPUT;
 import static org.apache.hadoop.fs.s3a.Constants.AWS_S3_DEFAULT_REGION;
 import static org.apache.hadoop.fs.s3a.Constants.CENTRAL_ENDPOINT;
@@ -213,19 +216,39 @@ public class DefaultS3ClientFactory extends Configured
 
     String memory = conf.get(AWS_S3_CRT_CLIENT_MEMORY, null);
     if (memory != null) {
+      LOG.debug("Using maxNativeMemoryLimitInBytes {}", memory);
       s3CrtAsyncClientBuilder.maxNativeMemoryLimitInBytes(Long.parseLong(memory));
     }
 
     String throughput = conf.get(AWS_S3_CRT_CLIENT_THROUGHPUT, null);
     if (throughput != null) {
+      LOG.debug("Using targetThroughputInGbps {}", throughput);
       s3CrtAsyncClientBuilder.targetThroughputInGbps(Double.parseDouble(throughput));
     }
 
     String concurrency = conf.get(AWS_S3_CRT_CLIENT_CONCURRENCY, null);
     if (concurrency != null) {
+      LOG.debug("Using maxConcurrency {}", concurrency);
       s3CrtAsyncClientBuilder.maxConcurrency(Integer.parseInt(concurrency));
     }
 
+    String minPartSize = conf.get(AWS_S3_CRT_CLIENT_MIN_PART_SIZE, null);
+    if (minPartSize != null) {
+      LOG.debug("Using minimumPartSizeInBytes {}", minPartSize);
+      s3CrtAsyncClientBuilder.minimumPartSizeInBytes(Long.parseLong(minPartSize));
+    }
+
+    String initialReadBufferSize = conf.get(AWS_S3_CRT_CLIENT_INITIAL_READ_BUFFER_SIZE, null);
+    if (initialReadBufferSize != null) {
+      LOG.debug("Using initialReadBufferSizeInBytes {}", initialReadBufferSize);
+      s3CrtAsyncClientBuilder.initialReadBufferSizeInBytes(Long.parseLong(initialReadBufferSize));
+    }
+
+    String threshold = conf.get(AWS_S3_CRT_CLIENT_THRESHOLD, null);
+    if (threshold != null) {
+      LOG.debug("Using thresholdInBytes {}", initialReadBufferSize);
+      s3CrtAsyncClientBuilder.thresholdInBytes(Long.parseLong(threshold));
+    }
 
     return s3CrtAsyncClientBuilder
             .forcePathStyle(parameters.isPathStyleAccess())

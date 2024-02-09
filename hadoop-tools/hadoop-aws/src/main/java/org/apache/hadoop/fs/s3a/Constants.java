@@ -1420,6 +1420,12 @@ public final class Constants {
           "fs.s3a.aws.s3.crt.memory";
   public static final String AWS_S3_CRT_CLIENT_CONCURRENCY =
           "fs.s3a.aws.s3.crt.concurrency";
+  public static final String AWS_S3_CRT_CLIENT_MIN_PART_SIZE =
+          "fs.s3a.aws.s3.crt.min.part.size";
+  public static final String AWS_S3_CRT_CLIENT_INITIAL_READ_BUFFER_SIZE =
+          "fs.s3a.aws.s3.crt.initial.read.buffer.size";
+  public static final String AWS_S3_CRT_CLIENT_THRESHOLD =
+          "fs.s3a.aws.s3.crt.threshold";
 
   /**
    * Maximum number of range reads a single input stream can have
