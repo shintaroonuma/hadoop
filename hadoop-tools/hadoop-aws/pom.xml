@@ -532,6 +532,10 @@
           <groupId>io.netty</groupId>
           <artifactId>*</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>utils</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
