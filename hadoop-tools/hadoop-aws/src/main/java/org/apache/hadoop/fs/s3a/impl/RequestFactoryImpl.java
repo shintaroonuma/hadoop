@@ -335,9 +335,9 @@ public class RequestFactoryImpl implements RequestFactory {
 
     putEncryptionParameters(putObjectRequestBuilder);
 
-    if (storageClass != null) {
-      putObjectRequestBuilder.storageClass(storageClass);
-    }
+//    if (storageClass != null) {
+//      putObjectRequestBuilder.storageClass(storageClass);
+//    }
 
     return prepareRequest(putObjectRequestBuilder);
   }

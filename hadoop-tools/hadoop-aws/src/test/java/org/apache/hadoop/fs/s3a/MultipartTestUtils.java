@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.fs.s3a;
 
+import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.MultipartUpload;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
@@ -93,7 +94,7 @@ public final class MultipartTestUtils {
       String uploadId = writeHelper.initiateMultiPartUpload(key, PutObjectOptions.keepingDirs());
       UploadPartRequest req = writeHelper.newUploadPartRequestBuilder(key, uploadId,
           partNo, len).build();
-      RequestBody body = RequestBody.fromInputStream(in, len);
+      AsyncRequestBody body = AsyncRequestBody.fromInputStream(in, Long.valueOf(len), fs.createStoreContext().getExecutor());
       UploadPartResponse response = writeHelper.uploadPart(req, body, null);
       LOG.debug("uploaded part etag {}, upid {}", response.eTag(), uploadId);
       return new IdKey(key, uploadId);

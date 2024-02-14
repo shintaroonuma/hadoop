@@ -34,7 +34,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
+import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
@@ -83,6 +85,8 @@ class S3AMultipartUploader extends AbstractMultipartUploader {
 
   private final S3AMultipartUploaderStatistics statistics;
 
+  private final ExecutorService boundedThreadPool;
+
   /**
    * Instatiate; this is called by the builder.
    * @param builder builder
@@ -91,15 +95,17 @@ class S3AMultipartUploader extends AbstractMultipartUploader {
    * @param statistics statistics callbacks
    */
   S3AMultipartUploader(
-      final S3AMultipartUploaderBuilder builder,
-      final WriteOperations writeOperations,
-      final StoreContext context,
-      final S3AMultipartUploaderStatistics statistics) {
+          final S3AMultipartUploaderBuilder builder,
+          final WriteOperations writeOperations,
+          final StoreContext context,
+          final S3AMultipartUploaderStatistics statistics,
+          final ExecutorService boundedThreadPool) {
     super(context.makeQualified(builder.getPath()));
     this.builder = builder;
     this.writeOperations = writeOperations;
     this.context = context;
     this.statistics = Objects.requireNonNull(statistics);
+    this.boundedThreadPool = boundedThreadPool;
   }
 
   @Override
@@ -155,7 +161,7 @@ class S3AMultipartUploader extends AbstractMultipartUploader {
         () -> {
           UploadPartRequest request = writeOperations.newUploadPartRequestBuilder(key,
               uploadIdString, partNumber, lengthInBytes).build();
-          RequestBody body = RequestBody.fromInputStream(inputStream, lengthInBytes);
+          AsyncRequestBody body = AsyncRequestBody.fromInputStream(inputStream, lengthInBytes, boundedThreadPool);
           UploadPartResponse response = writeOperations.uploadPart(request, body, statistics);
           statistics.partPut(lengthInBytes);
           String eTag = response.eTag();

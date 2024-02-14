@@ -68,6 +68,7 @@ import static org.apache.hadoop.fs.VectoredReadUtils.isOrderedDisjoint;
 import static org.apache.hadoop.fs.VectoredReadUtils.mergeSortedRanges;
 import static org.apache.hadoop.fs.VectoredReadUtils.validateNonOverlappingAndReturnSortedRanges;
 import static org.apache.hadoop.fs.s3a.Invoker.onceTrackingDuration;
+import static org.apache.hadoop.fs.s3a.impl.InternalConstants.DRAIN_BUFFER_SIZE;
 import static org.apache.hadoop.util.StringUtils.toLowerCase;
 import static org.apache.hadoop.util.functional.FutureIO.awaitFuture;
 
@@ -268,6 +269,8 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
       closeStream("reopen(" + reason + ")", forceAbort, false);
     }
 
+    //System.out.println("REOPENING FILE");
+
     contentRangeFinish = calculateRequestLimit(inputPolicy, targetPos,
         length, contentLength, readahead);
     LOG.debug("reopen({}) for {} range[{}-{}], length={}," +
@@ -458,6 +461,9 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
   @Retries.RetryTranslated
   public synchronized int read() throws IOException {
     checkNotClosed();
+
+    //System.out.println("READING FILE SINGLE");
+
     if (this.contentLength == 0 || (nextReadPos >= contentLength)) {
       return -1;
     }
@@ -549,6 +555,8 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
       throws IOException {
     checkNotClosed();
 
+    //System.out.println("READING FILE BYTES");
+
     validatePositionedReadArgs(nextReadPos, buf, off, len);
     if (len == 0) {
       return 0;
@@ -626,8 +634,10 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
    */
   @Override
   public synchronized void close() throws IOException {
+    //System.out.println("CALLING CLOSE");
     if (!closed) {
       closed = true;
+      //System.out.println("CLOSING");
       try {
         stopVectoredIOOperations.set(true);
         // close or abort the stream; blocking
@@ -684,32 +694,19 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
       return CompletableFuture.completedFuture(false);
     }
 
-    // if the amount of data remaining in the current request is greater
-    // than the readahead value: abort.
-    long remaining = remainingInCurrentRequest();
-    LOG.debug("Closing stream {}: {}", reason,
-        forceAbort ? "abort" : "soft");
-    boolean shouldAbort = forceAbort || remaining > readahead;
+    System.out.println("CLOSING STREAM (NOT ABORTING)");
+
     CompletableFuture<Boolean> operation;
-    SDKStreamDrainer drainer = new SDKStreamDrainer(
-        uri,
-        wrappedStream,
-        shouldAbort,
-        (int) remaining,
-        streamStatistics,
-        reason);
-
-    if (blocking || shouldAbort || remaining <= asyncDrainThreshold) {
-      // don't bother with async IO if the caller plans to wait for
-      // the result, there's an abort (which is fast), or
-      // there is not much data to read.
-      operation = CompletableFuture.completedFuture(drainer.apply());
-
-    } else {
-      LOG.debug("initiating asynchronous drain of {} bytes", remaining);
-      // schedule an async drain/abort
-      operation = client.submit(drainer);
+    try {
+      wrappedStream.close();
+    } catch (Exception e) {
+      // exception escalates to an abort
+      LOG.debug("When closing {} stream for {}, will abort the stream",
+              uri, reason, e);
+      System.out.println(e.getLocalizedMessage());
     }
+
+    operation = CompletableFuture.completedFuture(true);
 
     // either the stream is closed in the blocking call or the async call is
     // submitted with its own copy of the references
