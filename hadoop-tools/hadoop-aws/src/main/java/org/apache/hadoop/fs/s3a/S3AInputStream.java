@@ -705,7 +705,7 @@ public class S3AInputStream extends FSInputStream implements  CanSetReadahead,
     SDKStreamDrainer drainer = new SDKStreamDrainer(
         uri,
         wrappedStream,
-        shouldAbort,
+        false,
         (int) remaining,
         streamStatistics,
         reason);
