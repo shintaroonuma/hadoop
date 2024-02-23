@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
@@ -869,12 +870,12 @@ class S3ABlockOutputStream extends OutputStream implements
       final int currentPartNumber = partETagsFutures.size() + 1;
       final UploadPartRequest request;
       final S3ADataBlocks.BlockUploadData uploadData;
-      final RequestBody requestBody;
+      final AsyncRequestBody requestBody;
       try {
         uploadData = block.startUpload();
         requestBody = uploadData.hasFile()
-            ? RequestBody.fromFile(uploadData.getFile())
-            : RequestBody.fromInputStream(uploadData.getUploadStream(), size);
+            ? AsyncRequestBody.fromFile(uploadData.getFile())
+            : AsyncRequestBody.fromInputStream(uploadData.getUploadStream(), size, executorService);
 
         request = writeOperationHelper.newUploadPartRequestBuilder(
             key,

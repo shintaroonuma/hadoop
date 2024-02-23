@@ -61,7 +61,7 @@ public class TestS3AUnbuffer extends AbstractS3AMockTest {
         .lastModified(Instant.ofEpochMilli(2L))
         .eTag("mock-etag")
         .build();
-    when(s3.headObject((HeadObjectRequest) any())).thenReturn(objectMetadata);
+    //when(s3.headObject((HeadObjectRequest) any())).thenReturn(objectMetadata);
 
     // Create mock ResponseInputStream<GetObjectResponse> and GetObjectResponse for open()
     GetObjectResponse objectResponse = GetObjectResponse.builder()
@@ -76,7 +76,7 @@ public class TestS3AUnbuffer extends AbstractS3AMockTest {
     ResponseInputStream<GetObjectResponse> getObjectResponseInputStream =
         new ResponseInputStream(objectResponse,
             AbortableInputStream.create(objectStream, () -> {}));
-    when(s3.getObject((GetObjectRequest) any())).thenReturn(getObjectResponseInputStream);
+    //when(s3.getObject((GetObjectRequest) any()).join()).thenReturn(getObjectResponseInputStream);
 
     // Call read and then unbuffer
     FSDataInputStream stream = fs.open(path);

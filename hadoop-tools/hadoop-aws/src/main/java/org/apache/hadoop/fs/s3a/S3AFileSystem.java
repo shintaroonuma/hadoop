@@ -53,6 +53,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -82,6 +84,7 @@ import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Error;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentRequest;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentResponseHandler;
@@ -534,6 +537,9 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
       throws IOException {
     // get the host; this is guaranteed to be non-null, non-empty
     bucket = name.getHost();
+
+    LOG.info("Initialising client");
+
     AuditSpan span = null;
     try {
       LOG.debug("Initializing S3AFileSystem for {}", bucket);
@@ -937,8 +943,14 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
         STORE_EXISTS_PROBE, bucket, null, () ->
             invoker.retry("doesBucketExist", bucket, true, () -> {
               try {
-                s3Client.headBucket(HeadBucketRequest.builder().bucket(bucket).build());
+                s3AsyncClient.headBucket(HeadBucketRequest.builder().bucket(bucket).build()).join();
                 return true;
+              } catch (CompletionException p) {
+                int statusCode = ((S3Exception) p.getCause()).statusCode();
+                if (statusCode == SC_404_NOT_FOUND ||
+                        (statusCode == SC_403_FORBIDDEN && accessPoint != null)) {
+                  return false;
+                }
               } catch (AwsServiceException ex) {
                 int statusCode = ex.statusCode();
                 if (statusCode == SC_404_NOT_FOUND ||
@@ -1307,7 +1319,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
     invoker.retry("Purging multipart uploads", bucket, true,
         () -> {
           RemoteIterator<MultipartUpload> uploadIterator =
-              MultipartUtils.listMultipartUploads(createStoreContext(), s3Client, null, maxKeys);
+              MultipartUtils.listMultipartUploads(createStoreContext(), s3AsyncClient, null, maxKeys);
 
           while (uploadIterator.hasNext()) {
             MultipartUpload upload = uploadIterator.next();
@@ -1407,9 +1419,9 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
   private final class S3AInternalsImpl implements S3AInternals {
 
     @Override
-    public S3Client getAmazonS3Client(String reason) {
+    public S3AsyncClient getAmazonS3Client(String reason) {
       LOG.debug("Access to S3 client requested, reason {}", reason);
-      return s3Client;
+      return s3AsyncClient;
     }
 
     /**
@@ -1437,9 +1449,9 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
                   // If accessPoint then region is known from Arn
                   accessPoint != null
                       ? accessPoint.getRegion()
-                      : s3Client.getBucketLocation(GetBucketLocationRequest.builder()
+                      : s3AsyncClient.getBucketLocation(GetBucketLocationRequest.builder()
                           .bucket(bucketName)
-                          .build())
+                          .build()).join()
                       .locationConstraintAsString()));
       return fixBucketRegion(region);
     }
@@ -1827,7 +1839,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
     public ResponseInputStream<GetObjectResponse> getObject(GetObjectRequest request) {
       // active the audit span used for the operation
       try (AuditSpan span = auditSpan.activate()) {
-        return s3Client.getObject(request);
+        return s3AsyncClient.getObject(request, AsyncResponseTransformer.toBlockingInputStream()).join();
       }
     }
 
@@ -1863,7 +1875,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
     @Override
     public CompleteMultipartUploadResponse completeMultipartUpload(
         CompleteMultipartUploadRequest request) {
-      return s3Client.completeMultipartUpload(request);
+      return s3AsyncClient.completeMultipartUpload(request).join();
     }
   }
 
@@ -2248,7 +2260,10 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
           innerRename(src, dst));
       LOG.debug("Copied {} bytes", bytesCopied);
       return true;
-    } catch (SdkException e) {
+    } catch (CompletionException e) {
+      SdkException ex = (SdkException) e.getCause();
+      throw translateException("rename(" + src +", " + dst + ")", src, ex);
+    }catch (SdkException e) {
       throw translateException("rename(" + src +", " + dst + ")", src, e);
     } catch (RenameFailedException e) {
       LOG.info("{}", e.getMessage());
@@ -2901,7 +2916,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
             if (changeTracker != null) {
               changeTracker.maybeApplyConstraint(requestBuilder);
             }
-            HeadObjectResponse headObjectResponse = s3Client.headObject(requestBuilder.build());
+            HeadObjectResponse headObjectResponse = s3AsyncClient.headObject(requestBuilder.build()).join();
             if (changeTracker != null) {
               changeTracker.processMetadata(headObjectResponse, operation);
             }
@@ -2935,8 +2950,8 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
     final HeadBucketResponse response = trackDurationAndSpan(STORE_EXISTS_PROBE, bucket, null,
         () -> invoker.retry("getBucketMetadata()", bucket, true, () -> {
           try {
-            return s3Client.headBucket(
-                getRequestFactory().newHeadBucketRequestBuilder(bucket).build());
+            return s3AsyncClient.headBucket(
+                getRequestFactory().newHeadBucketRequestBuilder(bucket).build()).join();
           } catch (NoSuchBucketException e) {
             throw new UnknownStoreException("s3a://" + bucket + "/", " Bucket does " + "not exist");
           }
@@ -2970,9 +2985,9 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
               OBJECT_LIST_REQUEST,
               () -> {
                 if (useListV1) {
-                  return S3ListResult.v1(s3Client.listObjects(request.getV1()));
+                  return S3ListResult.v1(s3AsyncClient.listObjects(request.getV1()).join());
                 } else {
-                  return S3ListResult.v2(s3Client.listObjectsV2(request.getV2()));
+                  return S3ListResult.v2(s3AsyncClient.listObjectsV2(request.getV2()).join());
                 }
               }));
     }
@@ -3025,11 +3040,11 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
                     nextMarker = prevListResult.get(prevListResult.size() - 1).key();
                   }
 
-                  return S3ListResult.v1(s3Client.listObjects(
-                      request.getV1().toBuilder().marker(nextMarker).build()));
+                  return S3ListResult.v1(s3AsyncClient.listObjects(
+                      request.getV1().toBuilder().marker(nextMarker).build()).join());
                 } else {
-                  return S3ListResult.v2(s3Client.listObjectsV2(request.getV2().toBuilder()
-                      .continuationToken(prevResult.getV2().nextContinuationToken()).build()));
+                  return S3ListResult.v2(s3AsyncClient.listObjectsV2(request.getV2().toBuilder()
+                      .continuationToken(prevResult.getV2().nextContinuationToken()).build()).join());
                 }
               }));
     }
@@ -3078,9 +3093,9 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
             incrementStatistic(OBJECT_DELETE_OBJECTS);
             trackDurationOfInvocation(getDurationTrackerFactory(),
                 OBJECT_DELETE_REQUEST.getSymbol(),
-                () -> s3Client.deleteObject(getRequestFactory()
+                () -> s3AsyncClient.deleteObject(getRequestFactory()
                     .newDeleteObjectRequestBuilder(key)
-                    .build()));
+                    .build()).join());
             return null;
           });
     } catch (AwsServiceException ase) {
@@ -3170,7 +3185,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
               trackDurationOfOperation(getDurationTrackerFactory(),
                   OBJECT_BULK_DELETE_REQUEST.getSymbol(), () -> {
                   incrementStatistic(OBJECT_DELETE_OBJECTS, keyCount);
-                  return s3Client.deleteObjects(deleteRequest);
+                  return s3AsyncClient.deleteObjects(deleteRequest).join();
                 }));
 
       if (!response.errors().isEmpty()) {
@@ -3268,10 +3283,10 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
           trackDurationOfSupplier(nonNullDurationTrackerFactory(durationTrackerFactory),
               OBJECT_PUT_REQUESTS.getSymbol(),
               () -> isFile ?
-                  s3Client.putObject(putObjectRequest, RequestBody.fromFile(uploadData.getFile())) :
-                  s3Client.putObject(putObjectRequest,
-                      RequestBody.fromInputStream(uploadData.getUploadStream(),
-                          putObjectRequest.contentLength())));
+                  s3AsyncClient.putObject(putObjectRequest, AsyncRequestBody.fromFile(uploadData.getFile())).join() :
+                  s3AsyncClient.putObject(putObjectRequest,
+                      AsyncRequestBody.fromInputStream(uploadData.getUploadStream(),
+                          putObjectRequest.contentLength(), boundedThreadPool)).join());
       incrementPutCompletedStatistics(true, len);
       // apply any post-write actions.
       finishedWrite(putObjectRequest.key(), len,
@@ -3310,7 +3325,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
    * @throws AwsServiceException on problems
    */
   @Retries.OnceRaw
-  UploadPartResponse uploadPart(UploadPartRequest request, RequestBody body,
+  UploadPartResponse uploadPart(UploadPartRequest request, AsyncRequestBody body,
       final DurationTrackerFactory durationTrackerFactory)
       throws AwsServiceException {
     long len = request.contentLength();
@@ -3319,7 +3334,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
       UploadPartResponse uploadPartResponse = trackDurationOfSupplier(
           nonNullDurationTrackerFactory(durationTrackerFactory),
           MULTIPART_UPLOAD_PART_PUT.getSymbol(), () ->
-              s3Client.uploadPart(request, body));
+              s3AsyncClient.uploadPart(request, body).join());
       incrementPutCompletedStatistics(true, len);
       return uploadPartResponse;
     } catch (AwsServiceException e) {
@@ -4643,7 +4658,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
     LOG.debug("Initiate multipart upload to {}", request.key());
     return trackDurationOfSupplier(getDurationTrackerFactory(),
         OBJECT_MULTIPART_UPLOAD_INITIATED.getSymbol(),
-        () -> s3Client.createMultipartUpload(request));
+        () -> s3AsyncClient.createMultipartUpload(request).join());
   }
 
   /**
@@ -5366,7 +5381,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
       p = prefix + "/";
     }
     // duration tracking is done in iterator.
-    return MultipartUtils.listMultipartUploads(storeContext, s3Client, p, maxKeys);
+    return MultipartUtils.listMultipartUploads(storeContext, s3AsyncClient, p, maxKeys);
   }
 
   /**
@@ -5391,7 +5406,7 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
       final ListMultipartUploadsRequest request = getRequestFactory()
           .newListMultipartUploadsRequestBuilder(p).build();
       return trackDuration(getInstrumentation(), MULTIPART_UPLOAD_LIST.getSymbol(), () ->
-          s3Client.listMultipartUploads(request).uploads());
+          s3AsyncClient.listMultipartUploads(request).join().uploads());
     });
   }
 
@@ -5406,10 +5421,10 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
   public void abortMultipartUpload(String destKey, String uploadId) throws IOException {
     LOG.debug("Aborting multipart upload {} to {}", uploadId, destKey);
     trackDuration(getInstrumentation(), OBJECT_MULTIPART_UPLOAD_ABORTED.getSymbol(), () ->
-        s3Client.abortMultipartUpload(
+        s3AsyncClient.abortMultipartUpload(
             getRequestFactory().newAbortMultipartUploadRequestBuilder(
                 destKey,
-                uploadId).build()));
+                uploadId).build()).join());
   }
 
   /**
@@ -5739,7 +5754,8 @@ public class S3AFileSystem extends FileSystem implements StreamCapabilities,
           createWriteOperationHelper(span),
           ctx,
           path,
-          statisticsContext.createMultipartUploaderStatistics());
+          statisticsContext.createMultipartUploaderStatistics(),
+              boundedThreadPool);
     }
   }
 
