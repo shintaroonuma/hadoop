@@ -29,11 +29,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import javax.annotation.Nullable;
 
+import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.MultipartUpload;
@@ -112,6 +114,8 @@ public class CommitOperations extends AbstractStoreOperation
    */
   private final WriteOperations writeOperations;
 
+  private final ExecutorService boundedThreadPool;
+
   /**
    * Filter to find all {code .pendingset} files.
    */
@@ -152,6 +156,8 @@ public class CommitOperations extends AbstractStoreOperation
         fs.getAuditSpanSource().createSpan(
             COMMITTER_COMMIT_JOB.getSymbol(),
             outputPath, null));
+
+    this.boundedThreadPool = fs.createStoreContext().getExecutor();
   }
 
   /**
@@ -586,7 +592,7 @@ public class CommitOperations extends AbstractStoreOperation
               partNumber,
               size).build();
           // Read from the file input stream at current position.
-          RequestBody body = RequestBody.fromInputStream(fileStream, size);
+          AsyncRequestBody body = AsyncRequestBody.fromInputStream(fileStream, size, boundedThreadPool);
           UploadPartResponse response = writeOperations.uploadPart(part, body, statistics);
           offset += uploadPartSize;
           parts.add(CompletedPart.builder()

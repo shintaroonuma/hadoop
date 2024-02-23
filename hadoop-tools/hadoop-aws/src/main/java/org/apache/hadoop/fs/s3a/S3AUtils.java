@@ -404,6 +404,11 @@ public final class S3AUtils {
       String path,
       Throwable cause) {
     IOException ioe;
+
+    if (cause instanceof CompletionException) {
+      cause = cause.getCause();
+    }
+
     if (cause instanceof SdkException) {
       ioe = translateException(operation, path, (SdkException) cause);
     } else if (cause instanceof IOException) {

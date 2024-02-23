@@ -320,6 +320,12 @@ public final class Constants {
   public static final int DEFAULT_ESTABLISH_TIMEOUT =
       (int)DEFAULT_ESTABLISH_TIMEOUT_DURATION.toMillis();
 
+  // milliseconds until we give up trying to acquire a connection
+  public static final String ACQUIRE_TIMEOUT =
+          "fs.s3a.connection.acquire.timeout";
+
+  public static final int DEFAULT_ACQUIRE_TIMEOUT = 50000;
+
   /**
    * Milliseconds until we give up on a connection to s3: {@value}.
    */
@@ -376,6 +382,15 @@ public final class Constants {
    */
   public static final String CONNECTION_KEEPALIVE =
       "fs.s3a.connection.keepalive";
+
+  public static final String CONNECTION_HEALTH_CONFIGURED =
+          "fs.s3a.connection.health.configured";
+
+  public static final String CONNECTION_MINIMUM_THROUGHPUT =
+          "fs.s3a.connection.minimum.throughput";
+
+  public static final String CONNECTION_MINIMUM_THROUGHPUT_TIMEOUT =
+          "fs.s3a.connection.minimum.throughput.timeout";
 
   /**
    * Default value of {@link #CONNECTION_KEEPALIVE}: {@value}.
@@ -1405,6 +1420,21 @@ public final class Constants {
    * Default maximum read size in bytes during vectored reads : {@value}.
    */
   public static final int DEFAULT_AWS_S3_VECTOR_READS_MAX_MERGED_READ_SIZE = 1253376; //1M
+
+  public static final String AWS_S3_CLIENT =
+          "fs.s3a.aws.s3.client";
+  public static final String AWS_S3_CRT_CLIENT_THROUGHPUT =
+          "fs.s3a.aws.s3.crt.throughput";
+  public static final String AWS_S3_CRT_CLIENT_MEMORY =
+          "fs.s3a.aws.s3.crt.memory";
+  public static final String AWS_S3_CRT_CLIENT_CONCURRENCY =
+          "fs.s3a.aws.s3.crt.concurrency";
+  public static final String AWS_S3_CRT_CLIENT_MIN_PART_SIZE =
+          "fs.s3a.aws.s3.crt.min.part.size";
+  public static final String AWS_S3_CRT_CLIENT_INITIAL_READ_BUFFER_SIZE =
+          "fs.s3a.aws.s3.crt.initial.read.buffer.size";
+  public static final String AWS_S3_CRT_CLIENT_THRESHOLD =
+          "fs.s3a.aws.s3.crt.threshold";
 
   /**
    * Maximum number of range reads a single input stream can have

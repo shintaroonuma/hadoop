@@ -58,7 +58,7 @@ public class TestS3AGetFileStatus extends AbstractS3AMockTest {
     HeadObjectResponse objectMetadata =
         HeadObjectResponse.builder().contentLength(1L).lastModified(new Date(2L).toInstant())
             .build();
-    when(s3.headObject(argThat(correctGetMetadataRequest(BUCKET, key)))).thenReturn(objectMetadata);
+    when(s3.headObject(argThat(correctGetMetadataRequest(BUCKET, key))).join()).thenReturn(objectMetadata);
     FileStatus stat = fs.getFileStatus(path);
     assertNotNull(stat);
     assertEquals(fs.makeQualified(path), stat.getPath());
@@ -84,7 +84,7 @@ public class TestS3AGetFileStatus extends AbstractS3AMockTest {
         ListObjectsV2Response.builder().contents(s3Objects).build();
     when(s3.listObjectsV2(argThat(
         matchListV2Request(BUCKET, keyDir))
-    )).thenReturn(listObjectsV2Response);
+    ).join()).thenReturn(listObjectsV2Response);
     FileStatus stat = fs.getFileStatus(path);
     assertNotNull(stat);
     assertEquals(fs.makeQualified(path), stat.getPath());
@@ -150,7 +150,7 @@ public class TestS3AGetFileStatus extends AbstractS3AMockTest {
         .commonPrefixes(prefixes)
         .contents(s3Objects)
         .build();
-    when(s3.listObjects(any(ListObjectsRequest.class))).thenReturn(v1Response);
+    when(s3.listObjects(any(ListObjectsRequest.class)).join()).thenReturn(v1Response);
 
     // V2 list API mock
     ListObjectsV2Response v2Result = ListObjectsV2Response.builder()
@@ -158,7 +158,7 @@ public class TestS3AGetFileStatus extends AbstractS3AMockTest {
         .contents(s3Objects)
         .build();
     when(s3.listObjectsV2(
-        any(software.amazon.awssdk.services.s3.model.ListObjectsV2Request.class))).thenReturn(
+        any(software.amazon.awssdk.services.s3.model.ListObjectsV2Request.class)).join()).thenReturn(
         v2Result);
   }
 

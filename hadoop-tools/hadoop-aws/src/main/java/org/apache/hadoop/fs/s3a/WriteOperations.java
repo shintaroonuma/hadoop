@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
@@ -263,7 +264,7 @@ public interface WriteOperations extends AuditSpanSource, Closeable {
    * @throws IOException on problems
    */
   @Retries.RetryTranslated
-  UploadPartResponse uploadPart(UploadPartRequest request, RequestBody body,
+  UploadPartResponse uploadPart(UploadPartRequest request, AsyncRequestBody body,
       DurationTrackerFactory durationTrackerFactory)
       throws IOException;
 

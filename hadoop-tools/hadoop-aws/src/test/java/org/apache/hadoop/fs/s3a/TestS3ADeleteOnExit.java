@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
 
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
@@ -75,14 +76,14 @@ public class TestS3ADeleteOnExit extends AbstractS3AMockTest {
     // unset S3CSE property from config to avoid pathIOE.
     conf.unset(Constants.S3_ENCRYPTION_ALGORITHM);
     testFs.initialize(uri, conf);
-    S3Client testS3 = testFs.getS3AInternals().getAmazonS3Client("mocking");
+    S3AsyncClient testS3 = testFs.getS3AInternals().getAmazonS3Client("mocking");
 
     Path path = new Path("/file");
     String key = path.toUri().getPath().substring(1);
     HeadObjectResponse objectMetadata =
         HeadObjectResponse.builder().contentLength(1L).lastModified(new Date(2L).toInstant())
             .build();
-    when(testS3.headObject(argThat(correctGetMetadataRequest(BUCKET, key))))
+    when(testS3.headObject(argThat(correctGetMetadataRequest(BUCKET, key))).join())
             .thenReturn(objectMetadata);
 
     testFs.deleteOnExit(path);

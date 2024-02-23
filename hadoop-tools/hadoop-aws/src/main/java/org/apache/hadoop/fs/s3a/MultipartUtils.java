@@ -23,6 +23,7 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import javax.annotation.Nullable;
 
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListMultipartUploadsRequest;
 import software.amazon.awssdk.services.s3.model.ListMultipartUploadsResponse;
@@ -44,7 +45,7 @@ import static org.apache.hadoop.fs.statistics.impl.IOStatisticsBinding.trackDura
  * MultipartUtils upload-specific functions for use by S3AFileSystem and Hadoop
  * CLI.
  * The Audit span active when
- * {@link #listMultipartUploads(StoreContext, S3Client, String, int)}
+ * {@link #listMultipartUploads(StoreContext, S3AsyncClient, String, int)}
  * was invoked is retained for all subsequent operations.
  */
 public final class MultipartUtils {
@@ -68,7 +69,7 @@ public final class MultipartUtils {
    */
   static RemoteIterator<MultipartUpload> listMultipartUploads(
       final StoreContext storeContext,
-      S3Client s3,
+      S3AsyncClient s3,
       @Nullable String prefix,
       int maxKeys)
       throws IOException {
@@ -92,7 +93,7 @@ public final class MultipartUtils {
     private final RequestFactory requestFactory;
 
     private final int maxKeys;
-    private final S3Client s3;
+    private final S3AsyncClient s3;
     private final Invoker invoker;
 
     private final AuditSpan auditSpan;
@@ -115,7 +116,7 @@ public final class MultipartUtils {
     private int listCount = 0;
 
     ListingIterator(final StoreContext storeContext,
-        S3Client s3,
+        S3AsyncClient s3,
         @Nullable String prefix,
         int maxKeys) throws IOException {
       this.storeContext = storeContext;
@@ -197,7 +198,7 @@ public final class MultipartUtils {
         listing = invoker.retry("listMultipartUploads", prefix, true,
             trackDurationOfOperation(storeContext.getInstrumentation(),
                 OBJECT_MULTIPART_UPLOAD_LIST.getSymbol(),
-                () -> s3.listMultipartUploads(requestBuilder.build())));
+                () -> s3.listMultipartUploads(requestBuilder.build()).join()));
         LOG.debug("Listing found {} upload(s)",
             listing.uploads().size());
         LOG.debug("New listing state: {}", this);
@@ -234,7 +235,7 @@ public final class MultipartUtils {
     @Retries.RetryTranslated
     public UploadIterator(
         final StoreContext storeContext,
-        S3Client s3,
+        S3AsyncClient s3,
         int maxKeys,
         @Nullable String prefix)
         throws IOException {

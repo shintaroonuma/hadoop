@@ -20,6 +20,7 @@ package org.apache.hadoop.fs.s3a;
 
 import java.util.List;
 
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectAclRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectAclResponse;
@@ -94,7 +95,7 @@ public class ITestS3ACannedACLs extends AbstractS3ATestBase {
     S3AFileSystem fs = getFileSystem();
 
     StoreContext storeContext = fs.createStoreContext();
-    S3Client s3 = getS3AInternals().getAmazonS3Client("acls");
+    S3AsyncClient s3 = getS3AInternals().getAmazonS3Client("acls");
     String key = storeContext.pathToKey(path);
     if (!isFile) {
       key = key + "/";
@@ -102,7 +103,7 @@ public class ITestS3ACannedACLs extends AbstractS3ATestBase {
     GetObjectAclResponse acl = s3.getObjectAcl(GetObjectAclRequest.builder()
         .bucket(storeContext.getBucket())
         .key(key)
-        .build());
+        .build()).join();
     List<Grant> grants = acl.grants();
     for (Grant grant : grants) {
       LOG.info("{}", grant.toString());
