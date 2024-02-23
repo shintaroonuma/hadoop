@@ -20,6 +20,7 @@ package org.apache.hadoop.fs.s3a.impl;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.impl.MultipartUploaderBuilderImpl;
@@ -39,16 +40,20 @@ public class S3AMultipartUploaderBuilder extends
 
   private final S3AMultipartUploaderStatistics statistics;
 
+  private final ExecutorService boundedThreadPool;
+
   public S3AMultipartUploaderBuilder(
-      @Nonnull final S3AFileSystem fileSystem,
-      @Nonnull final WriteOperations writeOperations,
-      @Nonnull final StoreContext context,
-      @Nonnull final Path p,
-      @Nonnull final S3AMultipartUploaderStatistics statistics) {
+          @Nonnull final S3AFileSystem fileSystem,
+          @Nonnull final WriteOperations writeOperations,
+          @Nonnull final StoreContext context,
+          @Nonnull final Path p,
+          @Nonnull final S3AMultipartUploaderStatistics statistics,
+          @Nonnull final ExecutorService boundedThreadPool) {
     super(fileSystem, p);
     this.writeOperations = writeOperations;
     this.context = context;
     this.statistics = statistics;
+    this.boundedThreadPool = boundedThreadPool;
   }
 
   @Override
@@ -59,7 +64,7 @@ public class S3AMultipartUploaderBuilder extends
   @Override
   public S3AMultipartUploader build()
       throws IllegalArgumentException, IOException {
-    return new S3AMultipartUploader(this, writeOperations, context, statistics);
+    return new S3AMultipartUploader(this, writeOperations, context, statistics, boundedThreadPool);
   }
 
 

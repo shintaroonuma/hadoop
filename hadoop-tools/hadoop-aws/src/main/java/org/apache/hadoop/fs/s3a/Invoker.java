@@ -21,6 +21,7 @@ package org.apache.hadoop.fs.s3a;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.Optional;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Future;
 import javax.annotation.Nullable;
 
@@ -120,6 +121,8 @@ public class Invoker {
       throws IOException {
     try (DurationInfo ignored = new DurationInfo(LOG, false, "%s", action)) {
       return operation.apply();
+    } catch (CompletionException p) {
+      throw S3AUtils.translateException(action, path, (SdkException) p.getCause());
     } catch (SdkException e) {
       throw S3AUtils.translateException(action, path, e);
     }
@@ -145,6 +148,8 @@ public class Invoker {
       throws IOException {
     try {
       return invokeTrackingDuration(tracker, operation);
+    } catch (CompletionException p) {
+      throw S3AUtils.translateException(action, path, (SdkException) p.getCause());
     } catch (SdkException e) {
       throw S3AUtils.translateException(action, path, e);
     }
@@ -186,6 +191,8 @@ public class Invoker {
       throws IOException {
     try (DurationInfo ignored = new DurationInfo(LOG, false, "%s", action)) {
       return FutureIO.awaitFuture(future);
+    } catch (CompletionException p) {
+      throw S3AUtils.translateException(action, path, (SdkException) p.getCause());
     } catch (SdkException e) {
       throw S3AUtils.translateException(action, path, e);
     }
@@ -466,6 +473,8 @@ public class Invoker {
         }
         // execute the operation, returning if successful
         return operation.apply();
+      } catch (CompletionException p) {
+        caught = (SdkException) p.getCause();
       } catch (IOException | SdkException e) {
         caught = e;
       }

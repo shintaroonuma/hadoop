@@ -27,6 +27,7 @@ import java.util.function.BiFunction;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.BucketType;
 import software.amazon.awssdk.services.s3.model.CreateBucketConfiguration;
@@ -258,7 +259,7 @@ public final class BucketTool extends S3GuardTool {
 
       println(out, "Creating bucket %s", bucket);
 
-      final S3Client s3Client = fs.getS3AInternals().getAmazonS3Client(NAME);
+      final S3AsyncClient s3Client = fs.getS3AInternals().getAmazonS3Client(NAME);
       try (DurationInfo ignored = new DurationInfo(LOG,
           "Create %sbucket %s in region %s",
           (fs.hasPathCapability(new Path("/"),

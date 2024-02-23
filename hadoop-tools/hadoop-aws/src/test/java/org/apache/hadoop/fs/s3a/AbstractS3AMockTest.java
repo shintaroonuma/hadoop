@@ -22,6 +22,7 @@ import static org.apache.hadoop.fs.s3a.Constants.*;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.net.URI;
@@ -54,7 +55,7 @@ public abstract class AbstractS3AMockTest {
   public ExpectedException exception = ExpectedException.none();
 
   protected S3AFileSystem fs;
-  protected S3Client s3;
+  protected S3AsyncClient s3;
 
   @Before
   public void setup() throws Exception {
@@ -84,7 +85,7 @@ public abstract class AbstractS3AMockTest {
     return conf;
   }
 
-  public S3Client getS3Client() {
+  public S3AsyncClient getS3Client() {
     return s3;
   }
 
